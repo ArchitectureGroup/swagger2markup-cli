@@ -26,6 +26,7 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.github.swagger2markup.OpenAPI2MarkupConverter;
 
 import javax.inject.Inject;
 import java.nio.file.Paths;
@@ -47,14 +48,17 @@ public class Application implements Runnable{
     @Option(name = {"-f", "--outputFile"}, description = "Output file. Converts the Swagger specification into one file.")
     public String outputFile;
 
+    @Option(name = { "-o", "--OpenAPI" }, description = "Use OpenAPI format.")
+    private boolean openAPI = false;
+
     @Option(name = {"-c", "--config"}, description = "Config file.")
     public String configFile;
 
     public static void main(String[] args) {
         Cli.CliBuilder<Runnable> builder = Cli.<Runnable>builder("swagger2markup")
-                    .withDescription("Converts a Swagger JSON or YAML file into Markup documents")
-                    .withDefaultCommand(Help.class)
-                    .withCommands(Help.class, Application.class);
+                .withDescription("Converts a Swagger JSON or YAML file into Markup documents")
+                .withDefaultCommand(Help.class)
+                .withCommands(Help.class, Application.class);
 
         Cli<Runnable> gitParser = builder.build();
 
@@ -62,31 +66,40 @@ public class Application implements Runnable{
     }
 
     public void run() {
-
-        Swagger2MarkupConfig swagger2MarkupConfig = null;
-        if(StringUtils.isNotBlank(configFile)) {
-            Configurations configs = new Configurations();
-            Configuration config;
-            try {
-                config = configs.properties(configFile);
-            } catch (ConfigurationException e) {
-                throw new IllegalArgumentException("Failed to read configFile", e);
+        if(openAPI) {
+            OpenAPI2MarkupConverter.Builder converterBuilder = OpenAPI2MarkupConverter.from(URIUtils.create(swaggerInput));
+            OpenAPI2MarkupConverter converter = converterBuilder.build();
+            if (StringUtils.isNotBlank(outputFile)) {
+                converter.toFile(Paths.get(outputFile).toAbsolutePath());
+            } else if (StringUtils.isNotBlank(outputDir)) {
+                converter.toFolder(Paths.get(outputDir).toAbsolutePath());
+            } else {
+                throw new IllegalArgumentException("Either outputFile or outputDir option must be used");
             }
-            swagger2MarkupConfig = new Swagger2MarkupConfigBuilder(config).build();
-        }
-        Swagger2MarkupConverter.Builder converterBuilder = Swagger2MarkupConverter.from(URIUtils.create(swaggerInput));
-        if(swagger2MarkupConfig != null){
-            converterBuilder.withConfig(swagger2MarkupConfig);
-        }
-        Swagger2MarkupConverter converter = converterBuilder.build();
-
-        if(StringUtils.isNotBlank(outputFile)){
-            converter.toFile(Paths.get(outputFile).toAbsolutePath());
-        }else if (StringUtils.isNotBlank(outputDir)){
-            converter.toFolder(Paths.get(outputDir).toAbsolutePath());
-        }else {
-            throw new IllegalArgumentException("Either outputFile or outputDir option must be used");
+        } else {
+            Swagger2MarkupConfig swagger2MarkupConfig = null;
+            if (StringUtils.isNotBlank(configFile)) {
+                Configurations configs = new Configurations();
+                Configuration config;
+                try {
+                    config = configs.properties(configFile);
+                } catch (ConfigurationException e) {
+                    throw new IllegalArgumentException("Failed to read configFile", e);
+                }
+                swagger2MarkupConfig = new Swagger2MarkupConfigBuilder(config).build();
+            }
+            Swagger2MarkupConverter.Builder converterBuilder = Swagger2MarkupConverter.from(URIUtils.create(swaggerInput));
+            if (swagger2MarkupConfig != null) {
+                converterBuilder.withConfig(swagger2MarkupConfig);
+            }
+            Swagger2MarkupConverter converter = converterBuilder.build();
+            if (StringUtils.isNotBlank(outputFile)) {
+                converter.toFile(Paths.get(outputFile).toAbsolutePath());
+            } else if (StringUtils.isNotBlank(outputDir)) {
+                converter.toFolder(Paths.get(outputDir).toAbsolutePath());
+            } else {
+                throw new IllegalArgumentException("Either outputFile or outputDir option must be used");
+            }
         }
     }
-
 }

@@ -13,6 +13,8 @@ You can clone and build the jar, then use this CLI to generate asciidocs.
     
     gradle assemble
     java -jar ./build/libs/swagger2markup-cli-X.X.X.jar convert -i the_swagger_file.json -d /the/path/to/output
+    Swagger OpenAPI:
+    java -jar ./build/libs/swagger2markup-cli-X.X.X.jar convert -o -i the_swagger_file.json -d /the/path/to/output
 
 Mac users can use https://brew.sh[Homebrew] to install the Swagger2Markup CLI:
 
